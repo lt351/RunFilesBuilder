@@ -15,6 +15,9 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
+    env:
+      LUCI_LANG: zh-cn   # ← 可改成 en/zh-tw 等
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -33,44 +36,51 @@ jobs:
           mkdir -p downloads
           cd downloads
 
-          # 下载 x86_64 ipk
+          api_url="https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall2/releases/latest"
+
+          # 下载 x86_64 依赖包
           curl -L -O $(
-            curl -s https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall2/releases/latest \
-            | jq -r '.assets[] | select(.name | test("passwall_packages_ipk_x86_64\\.zip")) | .browser_download_url'
+            curl -s $api_url |
+            jq -r '.assets[] | select(.name=="passwall_packages_ipk_x86_64.zip") | .browser_download_url'
           )
 
-          # 下载 aarch64 ipk
+          # 下载 aarch64 依赖包
           curl -L -O $(
-            curl -s https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall2/releases/latest \
-            | jq -r '.assets[] | select(.name | test("passwall_packages_ipk_aarch64_cortex-a53\\.zip")) | .browser_download_url'
+            curl -s $api_url |
+            jq -r '.assets[] | select(.name=="passwall_packages_ipk_aarch64_cortex-a53.zip") | .browser_download_url'
           )
 
-
-          # 下载luci app ipk
+          # 下载 luci 主程序
           curl -L -O $(
-            curl -s https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall2/releases/latest \
-            | jq -r '.assets[] | select(.name | test("luci-.*-passwall2.*\\.ipk")) | .browser_download_url' | head -1
-          )
-          # 下载luci语言包ipk
-          curl -L -O $(
-            curl -s https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall2/releases/latest \
-            | jq -r '.assets[] | select(.name | test("luci-.*-passwall2.*\\.ipk")) | .browser_download_url' | tail -1
+            curl -s $api_url |
+            jq -r '.assets[]
+              | select(.name | test("^luci-app-passwall2_.*\\.ipk$"))
+              | .browser_download_url'
           )
 
+          # 下载 luci 语言包（可配置）
+          curl -L -O $(
+            curl -s $api_url |
+            jq -r ".assets[]
+              | select(.name | test(\"^luci-i18n-passwall2-${LUCI_LANG}_.*\\\\.ipk$\"))
+              | .browser_download_url"
+          ) || echo "No luci-i18n language pack found"
 
       - name: Organize files for x86_64
         run: |
           mkdir -p passwall_x86_64/depends passwall_x86_64/main
           unzip downloads/passwall_packages_ipk_x86_64.zip -d passwall_x86_64/depends
           rm downloads/passwall_packages_ipk_x86_64.zip
-          cp downloads/luci-*.ipk passwall_x86_64/main/
+          cp downloads/luci-app-passwall2_*.ipk passwall_x86_64/main/
+          cp downloads/luci-i18n-passwall2-*_*.ipk passwall_x86_64/main/ || true
 
       - name: Organize files for aarch64_cortex-a53
         run: |
           mkdir -p passwall_aarch64/depends passwall_aarch64/main
           unzip downloads/passwall_packages_ipk_aarch64_cortex-a53.zip -d passwall_aarch64/depends
           rm downloads/passwall_packages_ipk_aarch64_cortex-a53.zip
-          cp downloads/luci-*.ipk passwall_aarch64/main/
+          cp downloads/luci-app-passwall2_*.ipk passwall_aarch64/main/
+          cp downloads/luci-i18n-passwall2-*_*.ipk passwall_aarch64/main/ || true
 
       - name: Create install.sh scripts
         run: |
@@ -86,7 +96,10 @@ jobs:
           opkg install iptables-mod-iprange
           opkg install iptables-mod-conntrack-extra
           opkg install depends/*.ipk
-          opkg install main/*.ipk
+          opkg install main/luci-app-passwall2_*.ipk
+          if ls main/luci-i18n-passwall2-*.ipk >/dev/null 2>&1; then
+            opkg install main/luci-i18n-passwall2-*.ipk
+          fi
           EOF
           chmod +x passwall_x86_64/install.sh
           cp passwall_x86_64/install.sh passwall_aarch64/install.sh
