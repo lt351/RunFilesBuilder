@@ -6,7 +6,7 @@
 # Blog: wkdaily.cpolar.cn
 #=================================================
 
-name: NEW Make Passwall2-zh-cn run files
+name: NEW Make test run files
 
 on:
   workflow_dispatch:
