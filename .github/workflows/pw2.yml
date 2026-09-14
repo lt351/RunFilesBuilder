@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      
+
       - name: Fetch latest release tag from Passwall2
         id: fetch_latest_tag
         run: |
@@ -38,20 +38,20 @@ jobs:
 
           api_url="https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall2/releases/latest"
 
-          # 下载 x86_64 依赖包
-          curl -L -O $(
+          # 下载 x86_64 依赖包（官方已改名为 packages_ipk_x86_64.zip）
+          curl -fL -o passwall_packages_ipk_x86_64.zip $(
             curl -s $api_url |
-            jq -r '.assets[] | select(.name=="passwall_packages_ipk_x86_64.zip") | .browser_download_url'
+            jq -r '.assets[] | select(.name=="packages_ipk_x86_64.zip") | .browser_download_url'
           )
 
           # 下载 aarch64 依赖包
-          curl -L -O $(
+          curl -fL -o passwall_packages_ipk_aarch64_cortex-a53.zip $(
             curl -s $api_url |
-            jq -r '.assets[] | select(.name=="passwall_packages_ipk_aarch64_cortex-a53.zip") | .browser_download_url'
+            jq -r '.assets[] | select(.name=="packages_ipk_aarch64_cortex-a53.zip") | .browser_download_url'
           )
 
           # 下载 luci 主程序
-          curl -L -O $(
+          curl -fL -O $(
             curl -s $api_url |
             jq -r '.assets[]
               | select(.name | test("^luci-app-passwall2_.*\\.ipk$"))
@@ -59,7 +59,7 @@ jobs:
           )
 
           # 下载 luci 语言包（可配置）
-          curl -L -O $(
+          curl -fL -O $(
             curl -s $api_url |
             jq -r ".assets[]
               | select(.name | test(\"^luci-i18n-passwall2-${LUCI_LANG}_.*\\\\.ipk$\"))
@@ -128,7 +128,7 @@ jobs:
         id: fetch_release_details
         run: |
           extra_content="![Github](https://img.shields.io/badge/Passwall2.run-123456?logo=github&logoColor=fff&labelColor=green&style=for-the-badge) [![Github](https://img.shields.io/badge/国内加速站下载-FC7C0D?logo=github&logoColor=fff&labelColor=000&style=for-the-badge)](https://wkdaily.cpolar.cn/archives/1) ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/wukongdaily/RunFilesBuilder/${{ env.LATEST_TAG }}/total?style=for-the-badge&labelColor=black&color=%2325c2a0)"
-          release_notes=$(curl -s https://api.github.com/repos/xiaorouji/openwrt-passwall2/releases/latest | jq -r '.body')
+          release_notes=$(curl -s https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall2/releases/latest | jq -r '.body')
           if [ -z "$release_notes" ]; then
             release_notes="No release notes available."
           fi
